@@ -1,4 +1,4 @@
-name: Build Files App (Bleeding Edge)
+name: Build Files App (Ultimate Preview)
 
 on:
   push:
@@ -15,27 +15,34 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # تثبيت .NET 10 التجريبي للحصول على MSBuild 18
+    # 1. تثبيت .NET 10 التجريبي (نحتاجه للـ SDKs فقط)
     - name: Setup .NET 10 Preview
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
         include-prerelease: true
 
-    - name: Restore Packages
-      # استخدام dotnet restore للتعامل مع .slnx
-      run: dotnet restore Files.slnx
+    # 2. إعداد MSBuild نسخة الـ Preview (هذا هو المفتاح لحل خطأ C++)
+    - name: Setup MSBuild Preview
+      uses: microsoft/setup-msbuild@v2
+      with:
+        # إجبار الأكشن على البحث عن نسخ Visual Studio التجريبية (Preview)
+        vs-prerelease: true 
 
+    # 3. استخدام MSBuild للـ Restore بدلاً من dotnet
+    # الـ Restore من خلال MSBuild هو الوحيد القادر على فهم مشاريع .vcxproj بشكل كامل
+    - name: Restore Packages
+      run: |
+        msbuild Files.slnx -t:restore -p:RestorePackagesConfig=true
+
+    # 4. البناء النهائي باستخدام MSBuild الكامل
     - name: Build Solution
       run: |
-        # تم وضع "Sideload Only" بين علامات تنصيص لإصلاح خطأ MSB1008
-        dotnet build Files.slnx -c Release -p:Platform=x64 -p:AppxPackageSigningEnabled=false -p:UapAppxPackageBuildMode="Sideload Only"
-        
+        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal /p:UapAppxPackageBuildMode="Sideload Only"
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Files-Experimental-Build
-        path: |
-          src/Files/AppPackages/
-          src/Files/bin/x64/Release/
-        if-no-files-found: warn
+        name: Files-Preview-Build
+        path: src/Files/AppPackages/
+        if-no-files-found: error
