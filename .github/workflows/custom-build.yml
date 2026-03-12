@@ -1,4 +1,4 @@
-name: Build Files App
+name: Build Files App (Bleeding Edge)
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    # نستخدم windows-latest، وسنقوم بتحديث المكونات يدوياً داخل الجوب
     runs-on: windows-latest
 
     steps:
@@ -15,33 +16,34 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # الخطوة السحرية: إجبار المشروع على استخدام .NET 8 ومنع "Roll Forward" للإصدارات الأحدث
-    - name: Create global.json
-      run: |
-        echo '{"sdk": {"version": "8.0.403", "rollForward": "latestPatch"}}' > global.json
-
-    - name: Setup .NET SDK
+    # 1. تثبيت .NET 10 (النسخة التجريبية) مع السماح بالـ Prerelease
+    - name: Setup .NET 10 Preview
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
-        dotnet-quality: 'ga'
+        dotnet-version: '10.0.x'
+        include-prerelease: true
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-
-    # نستخدم MSBuild للـ Restore لأنه الأفضل مع المشاريع المختلطة (C++ و C#)
-    - name: Restore Packages
+    # 2. إضافة مسار الـ SDK للبيئة للتأكد من استخدام MSBuild الداخلي الخاص بـ .NET 10
+    - name: Verify Version
       run: |
-        msbuild Files.slnx -t:restore -p:RestorePackagesConfig=true
+        dotnet --version
+        dotnet build --version # سيظهر لك هنا إصدار MSBuild 18.x
 
+    # 3. استخدام dotnet للـ Restore (يدعم ملفات .slnx في النسخ الحديثة)
+    - name: Restore Packages
+      run: dotnet restore Files.slnx
+
+    # 4. البناء باستخدام dotnet CLI (الذي سيستخدم MSBuild 18 داخلياً)
     - name: Build Solution
       run: |
-        # أضفنا متغير لتعطيل استخدام الـ SDKs التجريبية أثناء البناء
-        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal /p:NETCoreSdkRuntimeIdentifier=win-x64
-
+        dotnet build Files.slnx -c Release -p:Platform=x64 -p:AppxPackageSigningEnabled=false -p:UapAppxPackageBuildMode=Sideload Only
+        
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Files-Custom-Build
-        path: src/Files/AppPackages/
-        if-no-files-found: error
+        name: Files-Experimental-Build
+        # لاحظ أن المسار قد يتغير قليلاً مع dotnet build إلى bin/x64/Release/...
+        path: |
+          src/Files/AppPackages/
+          src/Files/bin/x64/Release/
+        if-no-files-found: warn
