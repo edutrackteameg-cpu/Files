@@ -27,7 +27,7 @@ jobs:
     # استخدام dotnet restore بدلاً من nuget restore
     - name: Restore Packages
     # لاحظ المسار الجديد src/Files.slnx
-      run: dotnet restore src/Files.slnx
+      run: dotnet restore Files.slnx
 
     - name: Build Solution
       run: |
