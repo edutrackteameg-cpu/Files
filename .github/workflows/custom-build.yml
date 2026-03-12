@@ -31,7 +31,7 @@ jobs:
 
     - name: Build Solution
       run: |
-        msbuild src/Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false
+        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
