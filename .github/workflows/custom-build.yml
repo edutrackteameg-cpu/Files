@@ -1,4 +1,4 @@
-name: Build Files App (Ultimate Preview)
+name: Build Files App (.NET 9)
 
 on:
   push:
@@ -15,34 +15,36 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # 1. تثبيت .NET 10 التجريبي (نحتاجه للـ SDKs فقط)
-    - name: Setup .NET 10 Preview
-      uses: actions/setup-dotnet@v4
+    # 1. تثبيت .NET 9 SDK بشكل صريح
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: '10.0.x'
-        include-prerelease: true
+        dotnet-version: '9.0.x'
+        # نستخدم 9.0.x لضمان الحصول على أحدث التحديثات الأمنية من الإصدار التاسع
 
-    # 2. إعداد MSBuild نسخة الـ Preview (هذا هو المفتاح لحل خطأ C++)
-    - name: Setup MSBuild Preview
+    # 2. إعداد MSBuild (النسخة المستقرة كافية لـ .NET 9)
+    - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
-      with:
-        # إجبار الأكشن على البحث عن نسخ Visual Studio التجريبية (Preview)
-        vs-prerelease: true 
 
-    # 3. استخدام MSBuild للـ Restore بدلاً من dotnet
-    # الـ Restore من خلال MSBuild هو الوحيد القادر على فهم مشاريع .vcxproj بشكل كامل
+    # 3. التحقق من الإصدارات المثبتة للتأكد من التوافق
+    - name: Verify Tool Versions
+      run: |
+        dotnet --version
+        msbuild /version
+
+    # 4. الـ Restore باستخدام MSBuild
     - name: Restore Packages
       run: |
         msbuild Files.slnx -t:restore -p:RestorePackagesConfig=true
 
-    # 4. البناء النهائي باستخدام MSBuild الكامل
+    # 5. البناء النهائي للسلوشن
     - name: Build Solution
       run: |
-        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal /p:UapAppxPackageBuildMode="Sideload Only"
+        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /p:UapAppxPackageBuildMode="Sideload Only"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Files-Preview-Build
+        name: Files-Build-NET9
         path: src/Files/AppPackages/
         if-no-files-found: error
