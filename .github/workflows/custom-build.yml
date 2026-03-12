@@ -7,7 +7,6 @@ on:
 
 jobs:
   build:
-    # نستخدم windows-latest، وسنقوم بتحديث المكونات يدوياً داخل الجوب
     runs-on: windows-latest
 
     steps:
@@ -16,33 +15,26 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # 1. تثبيت .NET 10 (النسخة التجريبية) مع السماح بالـ Prerelease
+    # تثبيت .NET 10 التجريبي للحصول على MSBuild 18
     - name: Setup .NET 10 Preview
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
         include-prerelease: true
 
-    # 2. إضافة مسار الـ SDK للبيئة للتأكد من استخدام MSBuild الداخلي الخاص بـ .NET 10
-    - name: Verify Version
-      run: |
-        dotnet --version
-        dotnet build --version # سيظهر لك هنا إصدار MSBuild 18.x
-
-    # 3. استخدام dotnet للـ Restore (يدعم ملفات .slnx في النسخ الحديثة)
     - name: Restore Packages
+      # استخدام dotnet restore للتعامل مع .slnx
       run: dotnet restore Files.slnx
 
-    # 4. البناء باستخدام dotnet CLI (الذي سيستخدم MSBuild 18 داخلياً)
     - name: Build Solution
       run: |
-        dotnet build Files.slnx -c Release -p:Platform=x64 -p:AppxPackageSigningEnabled=false -p:UapAppxPackageBuildMode=Sideload Only
+        # تم وضع "Sideload Only" بين علامات تنصيص لإصلاح خطأ MSB1008
+        dotnet build Files.slnx -c Release -p:Platform=x64 -p:AppxPackageSigningEnabled=false -p:UapAppxPackageBuildMode="Sideload Only"
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Files-Experimental-Build
-        # لاحظ أن المسار قد يتغير قليلاً مع dotnet build إلى bin/x64/Release/...
         path: |
           src/Files/AppPackages/
           src/Files/bin/x64/Release/
