@@ -15,27 +15,29 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # 1. إجبار البيئة على استخدام إصدار مستقر ومتوافق مع MSBuild 17
+    # الخطوة السحرية: إجبار المشروع على استخدام .NET 8 ومنع "Roll Forward" للإصدارات الأحدث
+    - name: Create global.json
+      run: |
+        echo '{"sdk": {"version": "8.0.403", "rollForward": "latestPatch"}}' > global.json
+
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x' 
-        # هذا يمنع استخدام نسخ Preview مثل 10.0
+        dotnet-version: '8.0.x'
         dotnet-quality: 'ga'
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    # 2. استخدام MSBuild للـ Restore بدلاً من dotnet restore
-    # هذا ضروري لأن السلوشن يحتوي على مشاريع C++ (vcxproj)
+    # نستخدم MSBuild للـ Restore لأنه الأفضل مع المشاريع المختلطة (C++ و C#)
     - name: Restore Packages
       run: |
         msbuild Files.slnx -t:restore -p:RestorePackagesConfig=true
 
-    # 3. البناء النهائي
     - name: Build Solution
       run: |
-        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal
+        # أضفنا متغير لتعطيل استخدام الـ SDKs التجريبية أثناء البناء
+        msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal /p:NETCoreSdkRuntimeIdentifier=win-x64
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
