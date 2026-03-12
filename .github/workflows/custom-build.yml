@@ -12,25 +12,29 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    # تثبيت دوت نت (ضروري لدعم .slnx)
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # أو النسخة التي يستخدمها مشروع Files حالياً
 
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.3
+      uses: microsoft/setup-msbuild@v2
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v1
-
-    # التعديل هنا: المسار الصحيح هو src/Files.sln
+    # استخدام dotnet restore بدلاً من nuget restore
     - name: Restore Packages
-      run: nuget restore src/Files.sln
+    # لاحظ المسار الجديد src/Files.slnx
+      run: dotnet restore src/Files.slnx
 
-    # التعديل هنا: توجيه الـ Build للمجلد الصحيح وتحديد المشروع الأساسي
     - name: Build Solution
       run: |
-        msbuild src/Files.sln /p:Configuration=Release /p:Platform=x64 /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false
+        msbuild src/Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Files-Custom-Build
-        # التأكد من مسار المخرجات الصحيح (قد يتغير حسب بنية المشروع)
         path: src/Files/AppPackages/
