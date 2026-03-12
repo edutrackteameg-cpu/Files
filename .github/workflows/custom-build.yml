@@ -1,4 +1,4 @@
-name: Build Files App Only
+name: Build Files App
 
 on:
   push:
@@ -13,30 +13,33 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        submodules: 'recursive' # ضروري جداً لجلب مكتبات المشروع
+        submodules: 'recursive'
 
-    - name: Setup .NET
+    # 1. إجبار البيئة على استخدام إصدار مستقر ومتوافق مع MSBuild 17
+    - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x' # الإصدار المستقر المطلوب
+        dotnet-version: '8.0.x' 
+        # هذا يمنع استخدام نسخ Preview مثل 10.0
         dotnet-quality: 'ga'
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    # 2. استخدام MSBuild للـ Restore بدلاً من dotnet restore
+    # هذا ضروري لأن السلوشن يحتوي على مشاريع C++ (vcxproj)
     - name: Restore Packages
-      # المسار في الجذر مباشرة
-      run: dotnet restore Files.slnx
+      run: |
+        msbuild Files.slnx -t:restore -p:RestorePackagesConfig=true
 
+    # 3. البناء النهائي
     - name: Build Solution
       run: |
-        # بناء النسخة النهائية x64 مع تعطيل التوقيع وتحديد ملف السلوشن في الجذر
         msbuild Files.slnx /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false /p:BuildInParallel=false /m:1 /verbosity:minimal
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Files-Custom-Build
-        # مسار الملفات الناتجة بعد البناء
         path: src/Files/AppPackages/
         if-no-files-found: error
