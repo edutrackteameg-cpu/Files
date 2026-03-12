@@ -1,0 +1,33 @@
+name: Build Custom Files App
+
+on:
+  push:
+    branches: [ main ] # أو اسم الفرع الذي تريد البناء منه
+  workflow_dispatch: # لتشغيل البناء يدوياً
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.3
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1
+
+    - name: Restore Packages
+      run: nuget restore Files.sln
+
+    - name: Build Solution
+      run: |
+        msbuild Files.sln /p:Configuration=Release /p:Platform=x64 /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Always /p:AppxPackageSigningEnabled=false
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Files-Custom-Build
+        path: Files/AppPackages/
